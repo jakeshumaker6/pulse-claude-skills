@@ -97,17 +97,18 @@ Translates project scope or requirements into ClickUp-ready user stories with su
 ### `client-researcher`
 Pulls comprehensive client context from shared context files, ClickUp, Grain, and Gmail. Produces a research brief with active projects, recent activity, open items, and health assessment.
 
-## Hooks (Quality Gates)
+## Hooks
 
-Automatic quality checks that run before and after Claude edits files. Installed into `~/.claude/settings.json` by the setup script.
+Automatic hooks installed into `~/.claude/settings.json` by the setup script.
 
 | Hook | Event | What it does |
 |------|-------|-------------|
+| `auto-pull` | SessionStart | Pulls latest `pulse-claude-skills` when Claude Code starts — keeps meetings and context fresh |
 | `block-secrets` | PreToolUse (Write/Edit) | Blocks writing `.env`, credentials, or key files |
 | `check-suppression` | PostToolUse (Write/Edit) | Warns if `@ts-ignore`, `eslint-disable`, or other suppression comments are introduced |
 | `check-file-size` | PostToolUse (Write/Edit) | Warns when a file exceeds 500 lines |
 
-These enforce the CLAUDE.md rules automatically so Claude catches violations in real time, not just during `/review`.
+The `auto-pull` hook means you never need to manually `git pull` — every new Claude Code session starts with the latest shared context, including meetings synced overnight by the GitHub Action.
 
 ## Prerequisites
 
