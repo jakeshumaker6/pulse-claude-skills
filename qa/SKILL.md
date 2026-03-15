@@ -1,10 +1,10 @@
 ---
 name: qa
-version: 1.0.0
+version: 2.0.0
 description: |
   Systematic QA testing for Pulse Integrated projects. Diff-aware (auto on feature
-  branches), full exploration, quick smoke test, or regression mode. Uses gstack's
-  browse binary for headless Chromium. Produces structured reports with health scores,
+  branches), full exploration, quick smoke test, or regression mode. Uses Puppeteer MCP
+  for headless browser testing. Produces structured reports with health scores,
   screenshots, and repro steps.
 allowed-tools:
   - Bash
@@ -13,6 +13,13 @@ allowed-tools:
   - Grep
   - Glob
   - AskUserQuestion
+  - mcp__puppeteer__puppeteer_navigate
+  - mcp__puppeteer__puppeteer_screenshot
+  - mcp__puppeteer__puppeteer_click
+  - mcp__puppeteer__puppeteer_fill
+  - mcp__puppeteer__puppeteer_select
+  - mcp__puppeteer__puppeteer_hover
+  - mcp__puppeteer__puppeteer_evaluate
 ---
 
 # /qa — Systematic QA Testing
@@ -28,19 +35,15 @@ You are a QA engineer. Test web applications like a real user — click everythi
 | Target URL | (auto-detect) | `https://myapp.com`, `http://localhost:5000` |
 | Mode | diff-aware (on branch) or full | `--quick`, `--regression baseline.json` |
 | Scope | Full app or diff-scoped | `Focus on the billing page` |
-| Auth | None | `Import cookies`, `Sign in as user@example.com` |
+| Auth | None | `Sign in as user@example.com` |
 
-**Find the browse binary:**
+**Verify Puppeteer MCP is available:**
 
-```bash
-B=""
-[ -x ~/.claude/skills/gstack/browse/dist/browse ] && B=~/.claude/skills/gstack/browse/dist/browse
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-[ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-if [ -x "$B" ]; then echo "READY: $B"; else echo "NEEDS_SETUP"; fi
-```
+Call `puppeteer_navigate` with a test URL (e.g., `about:blank`). If it fails, tell the user:
 
-If `NEEDS_SETUP`: Tell the user gstack's browse binary is required. They need to install gstack: `git clone https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`. STOP and wait.
+> Puppeteer MCP server is required. Add it to `~/.claude/settings.json` under `mcpServers`.
+
+STOP and wait.
 
 **Create output directories:**
 
@@ -59,6 +62,8 @@ Auto-detect the running app based on project files:
 - **Odoo:** Check CLAUDE.md memory for staging URL. Try Odoo.sh staging URL if available
 - **Express/Node:** Check `package.json` start script. Try `localhost:4000`, then `localhost:3000`
 
+To verify a port is running, use `puppeteer_navigate` — if it fails with a connection error, try the next port.
+
 If no local app detected, ask the user for the URL.
 
 ## Modes
@@ -68,6 +73,8 @@ If no local app detected, ask the user for the URL.
 1. Analyze the branch diff:
    ```bash
    git diff main...HEAD --name-only
+   ```
+   ```bash
    git log main..HEAD --oneline
    ```
 
@@ -83,11 +90,11 @@ If no local app detected, ask the user for the URL.
 
 ### Full (default when URL is provided)
 
-Systematic exploration. Visit every reachable page. Document 5-10 well-evidenced issues. Produce health score. 5-15 minutes.
+Systematic exploration. Visit every reachable page. Document 5-10 well-evidenced issues. Produce health score.
 
 ### Quick (`--quick`)
 
-30-second smoke test. Homepage + top 5 navigation targets. Check: loads? Console errors? Broken links?
+30-second smoke test. Homepage + top 5 navigation targets. Check: loads? Console errors? Broken links? Returns PASS/FAIL with summary.
 
 ### Regression (`--regression baseline.json`)
 
@@ -97,67 +104,100 @@ Run full mode, compare against previous baseline. What's fixed? What's new? Scor
 
 ### Phase 1: Initialize
 
-1. Find browse binary
+1. Verify Puppeteer MCP
 2. Create output directories
 3. Start timer
 
 ### Phase 2: Authenticate (if needed)
 
-```bash
-$B goto <login-url>
-$B snapshot -i
-$B fill @e3 "user@example.com"
-$B fill @e4 "[REDACTED]"
-$B click @e5
-$B snapshot -D
+```
+puppeteer_navigate → login URL
+puppeteer_screenshot → capture login page
+puppeteer_fill → email field
+puppeteer_fill → password field (use [REDACTED] in reports)
+puppeteer_click → submit button
+puppeteer_screenshot → verify login success
 ```
 
-If cookies provided: `$B cookie-import cookies.json`
 If 2FA required: Ask user for the code and wait.
 If CAPTCHA blocks: Tell user to complete it manually.
 
 ### Phase 3: Orient
 
-```bash
-$B goto <target-url>
-$B snapshot -i -a -o "$REPORT_DIR/screenshots/initial.png"
-$B links
-$B console --errors
-```
+1. `puppeteer_navigate` to the target URL
+2. `puppeteer_screenshot` (name: `initial`, width: 1440, height: 900)
+3. `puppeteer_evaluate` to gather page state:
 
-Detect framework:
-- `__next` in HTML → Next.js
-- `csrf-token` meta → Flask/Rails
-- `wp-content` → WordPress
-- Client-side routing → SPA (React, Vue)
+```javascript
+(() => {
+  return {
+    title: document.title,
+    url: window.location.href,
+    links: Array.from(document.querySelectorAll('a[href]'))
+      .map(a => ({ text: a.textContent.trim().slice(0, 50), href: a.href }))
+      .filter(l => l.text.length > 0)
+      .slice(0, 50),
+    consoleErrors: [],
+    framework: (() => {
+      if (window.__NEXT_DATA__) return 'Next.js';
+      if (document.querySelector('[data-reactroot]')) return 'React';
+      if (document.querySelector('meta[name="csrf-token"]')) return 'Flask/Rails';
+      if (document.querySelector('link[href*="wp-content"]')) return 'WordPress';
+      if (document.querySelector('.o_main_navbar')) return 'Odoo';
+      return 'Unknown';
+    })()
+  };
+})()
+```
 
 ### Phase 4: Explore
 
 Visit pages systematically. At each page:
 
-```bash
-$B goto <page-url>
-$B snapshot -i -a -o "$REPORT_DIR/screenshots/page-name.png"
-$B console --errors
+1. `puppeteer_navigate` to the page URL
+2. `puppeteer_screenshot` (name: page slug, width: 1440, height: 900)
+3. `puppeteer_evaluate` to check for errors:
+
+```javascript
+(() => {
+  return {
+    title: document.title,
+    url: window.location.href,
+    h1: document.querySelector('h1')?.textContent?.trim(),
+    brokenImages: Array.from(document.querySelectorAll('img'))
+      .filter(i => !i.naturalWidth && i.src).map(i => i.src),
+    emptyLinks: Array.from(document.querySelectorAll('a'))
+      .filter(a => !a.href || a.href === '#' || a.href === window.location.href + '#')
+      .map(a => a.textContent.trim()).slice(0, 10),
+    is404: document.title.toLowerCase().includes('404') ||
+      document.body?.innerText?.includes('Page not found') ||
+      document.body?.innerText?.includes('Not Found')
+  };
+})()
 ```
 
 **Per-page checklist:**
 1. Visual scan — layout issues in screenshot
-2. Interactive elements — click buttons, links, controls
-3. Forms — fill and submit; test empty, invalid, edge cases
+2. Interactive elements — click buttons, links, controls using `puppeteer_click`
+3. Forms — fill with `puppeteer_fill` and submit; test empty, invalid, edge cases
 4. Navigation — check all paths in and out
 5. States — empty state, loading, error, overflow
-6. Console — any new JS errors?
-7. Responsiveness — mobile viewport check if relevant
+6. Console — check for JS errors via `puppeteer_evaluate`
+7. Responsiveness — `puppeteer_screenshot` at mobile width (375px)
 
-**Quick mode:** Only homepage + top 5 nav targets. Skip per-page checklist.
+**Quick mode:** Only homepage + top 5 nav targets. Skip per-page checklist. Just check loads + no errors.
 
 ### Phase 5: Document
 
 Document each issue immediately — don't batch.
 
-**Interactive bugs:** screenshot before → action → screenshot after → snapshot -D → write repro steps
-**Static bugs:** single annotated screenshot + description
+**Interactive bugs:**
+1. `puppeteer_screenshot` (before state)
+2. Perform action (`puppeteer_click`, `puppeteer_fill`, etc.)
+3. `puppeteer_screenshot` (after state)
+4. Write repro steps
+
+**Static bugs:** single screenshot + description
 
 ### Phase 6: Wrap Up
 
@@ -199,6 +239,29 @@ Each category scored 0-100, weighted average:
 │   ├── issue-001-step-1.png
 │   └── ...
 └── baseline.json
+```
+
+### Quick Mode Output
+
+When running `--quick` (including from `/ship`), output a compact summary:
+
+```
+QA SMOKE TEST: PASS ✓
+URL: https://myapp.com
+Pages checked: 6 | Console errors: 0 | Broken links: 0 | 404s: 0
+Screenshot: .pulse/qa-reports/screenshots/quick-check.png
+```
+
+Or on failure:
+
+```
+QA SMOKE TEST: FAIL ✗
+URL: https://myapp.com
+Pages checked: 6 | Console errors: 3 | Broken links: 1 | 404s: 0
+Issues:
+  - Console: TypeError in /dashboard (see screenshot)
+  - Broken link: /pricing → 404
+Screenshot: .pulse/qa-reports/screenshots/quick-check.png
 ```
 
 ## Important Rules

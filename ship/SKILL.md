@@ -10,6 +10,9 @@ allowed-tools:
   - Grep
   - Glob
   - AskUserQuestion
+  - mcp__puppeteer__puppeteer_navigate
+  - mcp__puppeteer__puppeteer_screenshot
+  - mcp__puppeteer__puppeteer_evaluate
 ---
 
 # /ship — Automated Release Workflow
@@ -126,6 +129,61 @@ If any test command exits non-zero:
 > Fix the failures and run `/ship` again.
 
 Do NOT proceed past failed tests. Do NOT offer to skip them.
+
+---
+
+## Step 3B: Browser Smoke Test (If URL Available)
+
+After unit tests pass, run a quick browser check if a target URL is detectable.
+
+### Detection
+
+Use the same stack-detection logic from `/qa`:
+- **Python/Flask:** Try `localhost:5000`, `localhost:8000`
+- **React/Vite:** Try `localhost:5173`, `localhost:3000`
+- **Next.js:** Try `localhost:3000`
+- **Odoo:** Use staging URL from CLAUDE.md/memory if available
+- **Remote staging:** Check for `STAGING_URL` env var or staging URL in CLAUDE.md
+
+Use `puppeteer_navigate` to test if the URL responds. If no URL is reachable, skip with:
+> "No running app detected. Skipping browser smoke test."
+
+### Execution
+
+Run the equivalent of `/qa --quick` against the detected URL:
+
+1. `puppeteer_navigate` to the URL
+2. `puppeteer_screenshot` (name: `ship-smoke-test`, width: 1440, height: 900)
+3. `puppeteer_evaluate` to check for errors:
+```javascript
+(() => {
+  const links = Array.from(document.querySelectorAll('a[href]'))
+    .map(a => a.href).filter(h => h.startsWith(window.location.origin)).slice(0, 5);
+  return {
+    title: document.title,
+    is404: document.title.toLowerCase().includes('404'),
+    hasContent: document.body?.innerText?.trim().length > 50,
+    internalLinks: links
+  };
+})()
+```
+4. Navigate to up to 5 internal links, checking each loads without 404
+5. Report compact PASS/FAIL summary
+
+### On Failure
+
+If the smoke test finds issues (404s, blank pages, console errors):
+
+> **Browser smoke test found issues:**
+> [list issues]
+>
+> (A) Fix and re-test
+> (B) Acknowledge and continue shipping
+> (C) Skip smoke test
+
+If the user chooses (A): stop and let them fix.
+If (B): note in PR body under "Known Issues."
+If (C): continue to Step 4.
 
 ---
 
