@@ -1,36 +1,56 @@
 #!/usr/bin/env bash
-# pulse-claude-skills setup — register all skills with Claude Code
+# pulse-claude-skills setup — register skills, agents, and hooks with Claude Code
 set -e
 
 PULSE_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="$(dirname "$PULSE_DIR")"
 SKILLS_BASENAME="$(basename "$SKILLS_DIR")"
+CLAUDE_DIR="$HOME/.claude"
+AGENTS_DIR="$CLAUDE_DIR/agents"
+SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
 # Handle --uninstall flag
 if [ "$1" = "--uninstall" ]; then
   echo "Uninstalling pulse-claude-skills..."
+
+  # Remove skill symlinks
   for skill_dir in "$PULSE_DIR"/*/; do
     if [ -f "$skill_dir/SKILL.md" ]; then
       skill_name="$(basename "$skill_dir")"
       target="$SKILLS_DIR/$skill_name"
       if [ -L "$target" ]; then
         rm -f "$target"
-        echo "  removed: $skill_name"
+        echo "  removed skill: $skill_name"
       fi
     fi
   done
+
+  # Remove agent symlinks
+  if [ -d "$PULSE_DIR/agents" ]; then
+    for agent_file in "$PULSE_DIR"/agents/*.md; do
+      if [ -f "$agent_file" ]; then
+        agent_name="$(basename "$agent_file")"
+        target="$AGENTS_DIR/$agent_name"
+        if [ -L "$target" ]; then
+          rm -f "$target"
+          echo "  removed agent: $agent_name"
+        fi
+      fi
+    done
+  fi
+
   echo "Done. Symlinks removed."
+  echo "  Note: hooks in $SETTINGS_FILE were not removed. Edit manually if needed."
   exit 0
 fi
 
-# Only create symlinks if we're inside a skills directory
+# --- Skills ---
 if [ "$SKILLS_BASENAME" = "skills" ]; then
   linked=()
   for skill_dir in "$PULSE_DIR"/*/; do
     if [ -f "$skill_dir/SKILL.md" ]; then
       skill_name="$(basename "$skill_dir")"
       target="$SKILLS_DIR/$skill_name"
-      # Create or update symlink; skip if a real directory exists
       if [ -L "$target" ] || [ ! -e "$target" ]; then
         ln -snf "pulse-claude-skills/$skill_name" "$target"
         linked+=("$skill_name")
@@ -40,12 +60,76 @@ if [ "$SKILLS_BASENAME" = "skills" ]; then
     fi
   done
 
-  echo "pulse-claude-skills ready."
+  echo "Skills ready."
   if [ ${#linked[@]} -gt 0 ]; then
-    echo "  linked skills: ${linked[*]}"
+    echo "  linked: ${linked[*]}"
   fi
 else
-  echo "pulse-claude-skills ready."
-  echo "  (skipped symlinks — not inside .claude/skills/)"
+  echo "Skills: skipped (not inside ~/.claude/skills/)"
   echo "  To enable: move this directory to ~/.claude/skills/pulse-claude-skills and re-run ./setup"
 fi
+
+# --- Agents ---
+if [ -d "$PULSE_DIR/agents" ]; then
+  mkdir -p "$AGENTS_DIR"
+  agent_linked=()
+  for agent_file in "$PULSE_DIR"/agents/*.md; do
+    if [ -f "$agent_file" ]; then
+      agent_name="$(basename "$agent_file")"
+      target="$AGENTS_DIR/$agent_name"
+      if [ -L "$target" ] || [ ! -e "$target" ]; then
+        ln -snf "$PULSE_DIR/agents/$agent_name" "$target"
+        agent_linked+=("${agent_name%.md}")
+      else
+        echo "  skipped agent $agent_name (file exists at $target)"
+      fi
+    fi
+  done
+
+  echo "Agents ready."
+  if [ ${#agent_linked[@]} -gt 0 ]; then
+    echo "  linked: ${agent_linked[*]}"
+  fi
+fi
+
+# --- Hooks ---
+HOOKS_TEMPLATE="$PULSE_DIR/hooks/settings-template.json"
+if [ -f "$HOOKS_TEMPLATE" ]; then
+  if command -v python3 &>/dev/null; then
+    # Merge hooks into existing settings.json using Python
+    python3 -c "
+import json, sys, os
+
+settings_file = '$SETTINGS_FILE'
+template_file = '$HOOKS_TEMPLATE'
+
+# Read existing settings
+if os.path.exists(settings_file):
+    with open(settings_file) as f:
+        settings = json.load(f)
+else:
+    settings = {}
+
+# Read hooks template
+with open(template_file) as f:
+    template = json.load(f)
+
+# Merge hooks (template hooks replace existing hooks section)
+settings['hooks'] = template.get('hooks', {})
+
+# Write back
+with open(settings_file, 'w') as f:
+    json.dump(settings, f, indent=2)
+    f.write('\n')
+
+print('Hooks ready.')
+print('  installed: block-secrets, check-suppression, check-file-size')
+"
+  else
+    echo "Hooks: skipped (python3 not found — needed to merge settings.json)"
+    echo "  To install manually, copy hooks from $HOOKS_TEMPLATE into $SETTINGS_FILE"
+  fi
+fi
+
+echo ""
+echo "pulse-claude-skills setup complete. Restart Claude Code to activate."

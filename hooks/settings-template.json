@@ -1,0 +1,33 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/skills/pulse-claude-skills/hooks/block-secrets.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/skills/pulse-claude-skills/hooks/check-suppression.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/skills/pulse-claude-skills/hooks/check-file-size.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

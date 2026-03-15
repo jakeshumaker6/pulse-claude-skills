@@ -84,6 +84,31 @@ Pre-call briefing that pulls from Grain (past meeting notes, action items), Clic
 
 **When to use:** 15-30 minutes before a client call. Run `/meeting-prep <client name>` to get a briefing with everything you need: what was discussed last time, which action items are done (and which aren't), what's been happening in email, and suggested talking points. Never walk into a call unprepared again.
 
+## Agents
+
+Custom agent definitions that Claude can delegate to automatically.
+
+### `code-reviewer`
+Senior code reviewer that runs two-pass analysis (critical + informational) against your branch diff. Auto-detects stack, checks for CLAUDE.md violations, security issues, and stack-specific problems. Read-only — cannot modify your code.
+
+### `user-story-writer`
+Translates project scope or requirements into ClickUp-ready user stories with subtasks, acceptance criteria, and priority flags. Follows Pulse's project kickoff pattern.
+
+### `client-researcher`
+Pulls comprehensive client context from shared context files, ClickUp, Grain, and Gmail. Produces a research brief with active projects, recent activity, open items, and health assessment.
+
+## Hooks (Quality Gates)
+
+Automatic quality checks that run before and after Claude edits files. Installed into `~/.claude/settings.json` by the setup script.
+
+| Hook | Event | What it does |
+|------|-------|-------------|
+| `block-secrets` | PreToolUse (Write/Edit) | Blocks writing `.env`, credentials, or key files |
+| `check-suppression` | PostToolUse (Write/Edit) | Warns if `@ts-ignore`, `eslint-disable`, or other suppression comments are introduced |
+| `check-file-size` | PostToolUse (Write/Edit) | Warns when a file exceeds 500 lines |
+
+These enforce the CLAUDE.md rules automatically so Claude catches violations in real time, not just during `/review`.
+
 ## Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
@@ -109,18 +134,11 @@ chmod +x setup
 ./setup
 ```
 
-That's it. The `setup` script creates symlinks so Claude Code can find each skill:
+The `setup` script does three things:
 
-```
-~/.claude/skills/plan              → pulse-claude-skills/plan/
-~/.claude/skills/review            → pulse-claude-skills/review/
-~/.claude/skills/qa                → pulse-claude-skills/qa/
-~/.claude/skills/ship              → pulse-claude-skills/ship/
-~/.claude/skills/retro             → pulse-claude-skills/retro/
-~/.claude/skills/client-brief      → pulse-claude-skills/client-brief/
-~/.claude/skills/campaign-check    → pulse-claude-skills/campaign-check/
-~/.claude/skills/meeting-prep      → pulse-claude-skills/meeting-prep/
-```
+1. **Skills** — symlinks each skill directory so `/plan`, `/review`, etc. appear in Claude Code
+2. **Agents** — symlinks agent definitions to `~/.claude/agents/` so Claude can delegate to them
+3. **Hooks** — merges quality gate hooks into `~/.claude/settings.json` (preserves your existing settings)
 
 ### 3. Restart Claude Code
 
@@ -179,6 +197,10 @@ context/
 │   ├── pr-process.md           # Feature → staging → main
 │   └── client-handoffs.md      # Agreements, call cadence, comms
 └── patterns/
+    ├── client-scoping.md       # Discovery → process mapping → solution design
+    ├── ai-transformation-roadmap.md  # Year-long AI integrations
+    ├── project-kickoff.md      # Scope → ClickUp stories → autonomous dev
+    ├── discovery-calls.md      # Trigger → walk process → edge cases → flow charts
     ├── deploy-platforms.md     # Render, Cloud Run, Odoo.sh, etc.
     └── odoo-19-gotchas.md      # Odoo 19 XML and payment pitfalls
 ```
