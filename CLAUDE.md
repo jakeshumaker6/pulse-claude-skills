@@ -2,9 +2,19 @@
 
 Custom Claude Code skills for Pulse Integrated.
 
+## Shared Context
+
+The `context/` directory contains shared team knowledge — clients, workflows, patterns, and engineering culture. Claude Code reads these automatically when skills need context.
+
+- **Read `context/INDEX.md`** for a full map of what's available
+- Skills like `/client-brief`, `/meeting-prep`, and `/retro` should reference `context/clients/` for account context
+- **Never put credentials or API keys in `context/`** — those go in personal `~/.claude/` memory
+
+To update shared context: edit the file, add it to `context/INDEX.md` if new, commit and push.
+
 ## Repo Rules
 
-This repo contains only Markdown skill files. No compiled code, no dependencies.
+This repo contains Markdown skill files and shared context. No compiled code, no dependencies.
 
 ### Skill File Conventions
 

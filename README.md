@@ -158,6 +158,51 @@ Open a terminal, `cd` into any Pulse project repo (e.g., `agile-dashboard`, `DCC
 
 This runs a 7-day sprint retro using git history — no MCP needed. If you see a metrics report, you're all set.
 
+## Shared Context
+
+The `context/` directory is the team's shared knowledge base. Claude reads these files to understand our clients, workflows, patterns, and culture — so every team member gets the same context automatically.
+
+```
+context/
+├── INDEX.md                    # Full map of everything below
+├── team.md                     # Team roster and roles
+├── engineering-culture.md      # Core values, engineering philosophy
+├── clients/
+│   ├── s40s.md                 # South 40 Specialties
+│   ├── swg.md                  # Strategic Wealth Group
+│   ├── dcc.md                  # DCC Marketing
+│   ├── gaapp.md                # GAAPP
+│   ├── national-concerts.md    # National Concerts
+│   └── other-clients.md        # Smaller accounts
+├── workflows/
+│   ├── sprint-process.md       # Weekly sprints, ceremonies
+│   ├── pr-process.md           # Feature → staging → main
+│   └── client-handoffs.md      # Agreements, call cadence, comms
+└── patterns/
+    ├── deploy-platforms.md     # Render, Cloud Run, Odoo.sh, etc.
+    └── odoo-19-gotchas.md      # Odoo 19 XML and payment pitfalls
+```
+
+### Updating shared context
+
+Anyone on the team can update these files:
+
+1. Edit the file in `context/`
+2. If adding a new file, add a link to `context/INDEX.md`
+3. Commit, push, and tell the team to `git pull`
+
+**Never put credentials or API keys in `context/`.** Those go in your personal `~/.claude/` memory (see below).
+
+### Personal memory (per-user)
+
+Each team member can also maintain personal memory files at `~/.claude/projects/<workspace>/memory/`. These are local and not shared. Use personal memory for:
+
+- Your own user profile and working preferences
+- API keys, credentials, staging URLs
+- Feedback and corrections specific to how you work with Claude
+
+Personal memory complements the shared context — Claude reads both.
+
 ## Updating
 
 When skills are updated, pull the latest and re-run setup:
