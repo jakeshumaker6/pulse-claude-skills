@@ -9,12 +9,14 @@ This directory contains shared knowledge for the Pulse team. Claude Code reads t
 
 ## Clients
 
-- [S40S](clients/s40s.md) — Priority #1: WooCommerce website, Odoo ERP, 3D AI/AR room builder
-- [SWG](clients/swg.md) — AI transformation roadmap: unified chat, tax tools, RMD agent
-- [DCC Marketing](clients/dcc.md) — RFP proposal generation platform: Box→MongoDB ETL, Claude AI layer
-- [GAAPP](clients/gaapp.md) — Patient advocacy: asthma care map, search web app, 3 chatbots, member org sites
-- [National Concerts](clients/national-concerts.md) — Website redesign, digital sales room, Instantly cold email campaigns
-- [Other Clients](clients/other-clients.md) — ANAD, Brelaw, Family Home & Patio, FEAST, Hungerford, Main Place RE, Premier Fund
+Each client has a folder with `overview.md` (manual context) and `meetings.md` (auto-generated from Grain via `scripts/sync-grain.sh`).
+
+- [S40S](clients/s40s/overview.md) — Priority #1: WooCommerce website, Odoo ERP, 3D AI/AR room builder
+- [SWG](clients/swg/overview.md) — AI transformation roadmap: unified chat, tax tools, RMD agent
+- [DCC Marketing](clients/dcc/overview.md) — RFP proposal generation platform: Box→MongoDB ETL, Claude AI layer
+- [GAAPP](clients/gaapp/overview.md) — Patient advocacy: asthma care map, search web app, 3 chatbots, member org sites
+- [National Concerts](clients/national-concerts/overview.md) — Website redesign, digital sales room, Instantly cold email campaigns
+- [Other Clients](clients/other-clients/overview.md) — ANAD, Brelaw, Family Home & Patio, FEAST, Hungerford, Main Place RE, Premier Fund
 
 ## Workflows
 

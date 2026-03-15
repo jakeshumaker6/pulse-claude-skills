@@ -185,13 +185,13 @@ context/
 ├── INDEX.md                    # Full map of everything below
 ├── team.md                     # Team roster and roles
 ├── engineering-culture.md      # Core values, engineering philosophy
-├── clients/
-│   ├── s40s.md                 # South 40 Specialties
-│   ├── swg.md                  # Strategic Wealth Group
-│   ├── dcc.md                  # DCC Marketing
-│   ├── gaapp.md                # GAAPP
-│   ├── national-concerts.md    # National Concerts
-│   └── other-clients.md        # Smaller accounts
+├── clients/                    # Each client = folder with overview.md + meetings.md
+│   ├── s40s/                   # overview.md + meetings.md
+│   ├── swg/
+│   ├── dcc/
+│   ├── gaapp/
+│   ├── national-concerts/
+│   └── other-clients/
 ├── workflows/
 │   ├── sprint-process.md       # Weekly sprints, ceremonies
 │   ├── pr-process.md           # Feature → staging → main
@@ -224,6 +224,29 @@ Each team member can also maintain personal memory files at `~/.claude/projects/
 - Feedback and corrections specific to how you work with Claude
 
 Personal memory complements the shared context — Claude reads both.
+
+## Automation Scripts
+
+Headless scripts that run Claude as an automated worker — no interactive conversation needed.
+
+### `sync-grain.sh` — Grain → Client Meeting Logs
+
+Pulls recent Grain recordings, matches each meeting to a client, and appends structured summaries to that client's `meetings.md` file. Auto-commits the changes.
+
+```bash
+# Sync today's meetings
+bash scripts/sync-grain.sh
+
+# Sync last 3 days
+bash scripts/sync-grain.sh 3
+
+# Preview without writing
+bash scripts/sync-grain.sh --dry-run
+```
+
+Each meeting entry includes: date, attendees, key decisions, action items, and context notes. The script matches meetings to clients using title, attendees, and content — so an "S40S Website Review" call automatically goes into `context/clients/s40s/meetings.md`.
+
+**Requires:** Grain MCP connected in Claude Code.
 
 ## Updating
 
