@@ -24,6 +24,10 @@ This directory contains shared knowledge for the Pulse team. Claude Code reads t
 
 ## Patterns
 
+- [Client Scoping](patterns/client-scoping.md) — How we scope new engagements: discovery → process mapping → solution design
+- [AI Transformation Roadmap](patterns/ai-transformation-roadmap.md) — Structuring year-long AI integrations: data inventory → ETL → unified chat
+- [Project Kickoff](patterns/project-kickoff.md) — Scope → ClickUp user stories → engineer assignment → autonomous development
+- [Discovery Calls](patterns/discovery-calls.md) — Trigger point → process walk → edge cases → flow charts
 - [Deploy Platforms](patterns/deploy-platforms.md) — Render, Google Cloud, Odoo.sh, SiteGround, Lovable/Supabase
 - [Odoo 19 Gotchas](patterns/odoo-19-gotchas.md) — XML syntax changes, payment provider inline forms
 
