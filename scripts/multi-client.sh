@@ -2,7 +2,6 @@
 # multi-client.sh — Run parallel Claude sessions scoped to different client repos
 #
 # Usage:
-#   bash scripts/multi-client.sh                    # Interactive: pick clients
 #   bash scripts/multi-client.sh s40s dcc           # Launch specific clients
 #   bash scripts/multi-client.sh --list             # Show available clients
 #   bash scripts/multi-client.sh --kill             # Kill all agent sessions
@@ -16,15 +15,19 @@ CLIENTS_DIR="$REPO_DIR/context/clients"
 SESSION_NAME="pulse-agents"
 
 # Client → repo path mapping
-# Add entries here as you onboard new client repos
-declare -A CLIENT_REPOS
-CLIENT_REPOS=(
-  ["s40s"]="/Users/jakes1/Documents/claude-code/S40S/s40s-odoo"
-  ["dcc"]="/Users/jakes1/Documents/claude-code/DCC"
-  ["gaapp"]="/Users/jakes1/Documents/claude-code/GAAPP"
-  ["swg"]="/Users/jakes1/Documents/claude-code/SWG"
-  ["pulse"]="/Users/jakes1/Documents/claude-code/Pulse"
-)
+# Edit these functions to add/change client repos
+get_repo() {
+  case "$1" in
+    s40s)  echo "/Users/jakes1/Documents/claude-code/S40S/s40s-odoo" ;;
+    dcc)   echo "/Users/jakes1/Documents/claude-code/DCC" ;;
+    gaapp) echo "/Users/jakes1/Documents/claude-code/GAAPP" ;;
+    swg)   echo "/Users/jakes1/Documents/claude-code/SWG" ;;
+    pulse) echo "/Users/jakes1/Documents/claude-code/Pulse" ;;
+    *)     return 1 ;;
+  esac
+}
+
+ALL_CLIENTS="s40s dcc gaapp swg pulse"
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,8 +40,8 @@ NC='\033[0m'
 list_clients() {
   echo "Available clients:"
   echo ""
-  for client in "${!CLIENT_REPOS[@]}"; do
-    repo="${CLIENT_REPOS[$client]}"
+  for client in $ALL_CLIENTS; do
+    repo="$(get_repo "$client")"
     if [ -d "$repo" ]; then
       echo -e "  ${GREEN}${client}${NC} → ${repo}"
     else
@@ -46,7 +49,7 @@ list_clients() {
     fi
   done
   echo ""
-  echo "Edit CLIENT_REPOS in this script to add/change mappings."
+  echo "Edit get_repo() in this script to add/change mappings."
 }
 
 kill_sessions() {
@@ -56,39 +59,6 @@ kill_sessions() {
   else
     echo "No active session: $SESSION_NAME"
   fi
-}
-
-launch_client_pane() {
-  local client="$1"
-  local repo="${CLIENT_REPOS[$client]}"
-  local context_file="$CLIENTS_DIR/$client/overview.md"
-
-  if [ ! -d "$repo" ]; then
-    echo -e "${RED}Skipping $client — repo not found at $repo${NC}"
-    return 1
-  fi
-
-  # Build the system prompt with client context
-  local context=""
-  if [ -f "$context_file" ]; then
-    context="$(cat "$context_file")"
-  fi
-
-  local prompt="You are working on the ${client^^} client project for Pulse Integrated.
-
-## Client Context
-${context}
-
-## Your Role
-You are a dedicated engineer for this client. Focus on:
-- Reading and understanding the codebase
-- Implementing features and fixes as directed
-- Running tests and QA
-- Preparing code for review
-
-Wait for instructions. When idle, you can explore the codebase to build context."
-
-  echo "$prompt"
 }
 
 # --- Main ---
@@ -129,7 +99,7 @@ fi
 
 # Validate all clients before launching
 for client in "${CLIENTS[@]}"; do
-  if [ -z "${CLIENT_REPOS[$client]+x}" ]; then
+  if ! get_repo "$client" >/dev/null 2>&1; then
     echo -e "${RED}Unknown client: $client${NC}"
     echo "Run '$0 --list' to see available clients."
     exit 1
@@ -144,7 +114,7 @@ fi
 
 # Create new tmux session with first client
 first_client="${CLIENTS[0]}"
-first_repo="${CLIENT_REPOS[$first_client]}"
+first_repo="$(get_repo "$first_client")"
 
 echo -e "Launching ${GREEN}${#CLIENTS[@]}${NC} client sessions..."
 echo ""
@@ -152,10 +122,10 @@ echo ""
 tmux new-session -d -s "$SESSION_NAME" -c "$first_repo" -n "$first_client"
 tmux send-keys -t "$SESSION_NAME:$first_client" "cd '$first_repo' && claude" Enter
 
-# Add panes for remaining clients
+# Add windows for remaining clients
 for ((i=1; i<${#CLIENTS[@]}; i++)); do
   client="${CLIENTS[$i]}"
-  repo="${CLIENT_REPOS[$client]}"
+  repo="$(get_repo "$client")"
 
   if [ ! -d "$repo" ]; then
     echo -e "${YELLOW}Skipping $client — repo not found${NC}"
